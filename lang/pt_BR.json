@@ -140,6 +140,7 @@
     "Today's supplements": "Suplementos de hoje",
     "Today's workout": "Treino de hoje",
     "Too many login attempts. Please try again in :seconds seconds.": "Muitas tentativas de login. Tente novamente em :seconds segundos.",
+    "Track your habits, workouts and supplements in one place.": "Acompanhe seus hábitos, treinos e suplementos em um só lugar.",
     "Training": "Treino",
     "Training day": "Dia de treino",
     "Training day supplements unlock on the Today screen as soon as you start a workout.": "Suplementos de dias de treino ficam liberados no Hoje assim que você inicia um treino.",
@@ -156,10 +157,10 @@
     "Welcome, :name": "Bem-vindo, :name",
     "When to take": "Quando tomar",
     "Workout completed": "Treino concluído",
+    "Workout goal": "Meta de treinos",
     "Workout in progress": "Treino em andamento",
     "Workout progress": "Progresso do treino",
     "workouts per week": "treinos por semana",
     "yesterday": "ontem",
-    "You hit :reps reps on every set. Try :weight kg.": "Você bateu :reps reps em tudo. Tente :weight kg.",
-    "Your workouts, supplements and habits in one place. Open it, see today's workout and go.": "Seus treinos, suplementos e hábitos num só lugar. Abra, veja o treino do dia e vá."
+    "You hit :reps reps on every set. Try :weight kg.": "Você bateu :reps reps em tudo. Tente :weight kg."
 }

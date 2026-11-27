@@ -7,6 +7,7 @@
     $path = trim(Livewire\Livewire::originalPath(), '/');
     $items = [
         ['label' => __('Today'), 'href' => url('/hoje'), 'active' => $path === 'hoje', 'icon' => 'home'],
+        ['label' => __('habits.title'), 'href' => route('habits.index'), 'active' => Str::is(['habitos', 'habitos/*'], $path), 'icon' => 'check'],
         ['label' => __('Training'), 'href' => url('/treino/fichas'), 'active' => Str::startsWith($path, 'treino'), 'icon' => 'training'],
         ['label' => __('Settings'), 'href' => url('/configuracoes'), 'active' => Str::startsWith($path, 'configuracoes'), 'icon' => 'settings'],
     ];

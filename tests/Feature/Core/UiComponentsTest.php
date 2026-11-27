@@ -114,9 +114,10 @@ test('tabs mark the active item', function () {
         ->assertSeeInOrder(['Fichas', 'Histórico']);
 });
 
-test('bottom nav shows Hoje, Treino and Ajustes', function () {
+test('bottom nav shows Hoje, Hábitos, Treino and Ajustes', function () {
     $this->blade('<x-ui.bottom-nav />')
-        ->assertSeeInOrder(['Hoje', 'Treino', 'Ajustes'])
+        ->assertSeeInOrder(['Hoje', 'Hábitos', 'Treino', 'Ajustes'])
+        ->assertSee(route('habits.index'), false)
         ->assertSee(url('/treino/fichas'), false)
         ->assertSee(url('/configuracoes'), false);
 });

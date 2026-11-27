@@ -45,6 +45,7 @@ Route::get('/auth/google/callback', function () {
     return redirect()->intended(route('today'));
 });
 
+require __DIR__.'/habits.php';
 require __DIR__.'/training.php';
 
 if (app()->isLocal()) {

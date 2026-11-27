@@ -10,12 +10,12 @@ use Livewire\Livewire;
 
 beforeEach(fn () => $this->travelTo(now()->parse('2026-10-22 10:00')));
 
-test('first access shows the empty state and the supplements invitation', function () {
+test('first access shows the habits and training invitations', function () {
     $this->actingAs(User::factory()->create(['name' => 'Vitor Guimarães']))
         ->get('/hoje')
         ->assertOk()
         ->assertSee('Bem-vindo, Vitor')
-        ->assertSee('Crie sua primeira ficha')
+        ->assertSeeInOrder(['Criar primeiro hábito', 'Crie sua primeira ficha'])
         ->assertSee('Adicionar suplemento')
         ->assertSee('Quinta, 22 out');
 });
@@ -25,7 +25,7 @@ test('shows the suggested plan and starts it', function () {
     $plan = WorkoutPlan::factory()->for($user)->create(['name' => 'Costas e bíceps', 'position' => 1]);
     WorkoutPlanExercise::factory()->count(2)->create(['workout_plan_id' => $plan->id]);
 
-    $component = Livewire::actingAs($user)->test('core.today')
+    $component = Livewire::actingAs($user)->test('training.today')
         ->assertSee('Ficha A')
         ->assertSee('Costas e bíceps · 2 exercícios')
         ->call('start', $plan->id);
@@ -50,7 +50,7 @@ test('training day supplements are disabled until a workout starts and daily one
     $daily = Supplement::factory()->for($user)->create(['name' => 'Creatina']);
     Supplement::factory()->for($user)->trainingDays()->create(['name' => 'Whey protein']);
 
-    Livewire::actingAs($user)->test('core.today')
+    Livewire::actingAs($user)->test('training.today')
         ->assertSee('Se treinar hoje')
         ->assertSee('0 de 1')
         ->call('toggleSupplement', $daily->id)
@@ -61,7 +61,7 @@ test('refusals from the rules show as a message', function () {
     $user = User::factory()->create();
     $whey = Supplement::factory()->for($user)->trainingDays()->create();
 
-    Livewire::actingAs($user)->test('core.today')
+    Livewire::actingAs($user)->test('training.today')
         ->call('toggleSupplement', $whey->id)
         ->assertHasErrors('training')
         ->assertSee('Este suplemento só pode ser marcado depois de iniciar o treino do dia.');
@@ -70,7 +70,7 @@ test('refusals from the rules show as a message', function () {
 test('cannot toggle a supplement of another user', function () {
     $foreign = Supplement::factory()->create();
 
-    expect(fn () => Livewire::actingAs(User::factory()->create())->test('core.today')->call('toggleSupplement', $foreign->id))
+    expect(fn () => Livewire::actingAs(User::factory()->create())->test('training.today')->call('toggleSupplement', $foreign->id))
         ->toThrow(ModelNotFoundException::class);
     expect($foreign->logs()->count())->toBe(0);
 });
