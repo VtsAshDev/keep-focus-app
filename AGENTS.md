@@ -1,0 +1,278 @@
+# Keep Focus
+
+Hub pessoal para acompanhar a rotina diária. A primeira entrega do hub reúne **Hábitos diários** e **Treino** na tela **Hoje**.
+
+Este arquivo é a referência do projeto para escopo, convenções, modelo de dados e regras de negócio. Siga-o sempre. Decisões novas devem ser registradas aqui (seção "Decisões tomadas").
+
+**Princípio central:** o Keep Focus tem um núcleo (usuário, tela Hoje, navegação e design system) que reúne módulos independentes. Treino e Hábitos seguem a mesma arquitetura modular.
+
+## Status atual
+
+- Branches seguem o padrão do hook `commit-msg` (`KT-<n>`, ex.: `KT-15`); commits no formato `KT-<n>: [TIPO]:Descrição`.
+- Etapa 1 (Base limpa): **concluída** na branch `KT-15`.
+- Etapa 2 (Design system): **concluída** na branch `KT-16`, revisada pelo dono em `/dev/ui`.
+- Etapa 3 (Dados e regras do Treino): **concluída** na branch `KT-17`.
+- Etapa 4 (Telas do Treino e tela Hoje): **concluída** na branch `KT-18`.
+- Etapa 5 (Migração de dados): **concluída** na branch `KT-19`, validada em 2026-10-22 com a cópia do banco de produção (8 suplementos e 12 registros copiados, nenhum ignorado).
+- Etapa 6 (Infraestrutura e lançamento): `KT-20` integrada à `main` em `a3a00df`, com CI e job de deploy concluídos. O dono habilitou `keep-focus.luvcode.tech`. O aceite do domínio, Google OAuth e PWA é acompanhado à parte em `docs/deploy.md`.
+- Primeira entrega do hub: **Hábitos diários** na branch `KT-21`, com o Hoje compondo os dois módulos.
+
+## Stack
+
+- PHP 8.3+, Laravel 13
+- Livewire 4 (componentes de arquivo único), Blade, Tailwind 4, Vite
+- Autenticação: Google OAuth via Laravel Socialite
+- Banco: SQLite (em produção também, com backup antes de cada migration)
+- PWA instalável (manifest, service worker `sw.js`, página offline)
+- Qualidade: Pest, PHPStan (Larastan), Pint, Husky + lint-staged, GitHub Actions
+- Infra: VPS própria, Nginx, deploy a partir da `main`
+
+Antes de concluir qualquer tarefa, rode Pint, PHPStan e Pest e garanta que tudo passa.
+
+## Convenções (obrigatórias)
+
+- Código em **inglês** (tabelas, colunas, classes, métodos, rotas internas). Interface em **português** via arquivos de tradução, locale `pt_BR`.
+- Lógica de negócio em classes **Action**, nunca dentro de componentes Livewire. Componentes só orquestram estado e chamam Actions.
+- Toda consulta de dados do usuário é escopada por `user_id`. **Nenhuma Action aceita um id sem validar o dono.**
+- Valores fechados (regra de uso, tipo de exercício, grupo muscular) como **Enums do PHP**.
+- Toda Action tem teste em Pest. Regras de borda (rodízio, dia de treino, progressão, meta semanal) têm testes dedicados.
+- Telas montadas apenas com componentes do design system (`components/ui/`). Nada de classes Tailwind longas repetidas nas views.
+- Branch por fase ou feature. Merge na `main` somente com CI verde.
+- Todo commit explica, no corpo da mensagem e de forma enxuta, tudo o que foi feito: uma linha por mudança relevante, em português, fácil de entender sem abrir o diff.
+- Em componentes Livewire de arquivo único, a view chama classes pelo nome completo (ex.: `App\Support\Dates::long(...)`), sem `use`. A parte PHP e a view viram um só arquivo compilado, e o Pint (que o lint-staged roda nos `.blade.php`) só enxerga a classe: remove imports que só a view usa e cria imports que colidem com um `@php use` da view.
+
+## Orquestração de desenvolvimento
+
+Em entregas que atravessam módulos, o coordenador define os critérios de aceite e delimita os arquivos por frente. Núcleo/UI e domínio trabalham em paralelo quando os recortes são independentes. A revisão de QA usa o diff integrado e o coordenador roda `composer ci:check` uma vez por revisão pronta, usando testes direcionados durante a implementação. Passe aos agentes o contrato, os arquivos e os critérios relevantes para a tarefa.
+
+## Design de referência
+
+As telas aprovadas ficam em `docs/design/`. Antes de criar ou alterar qualquer componente ou tela, leia `docs/design/README.md` e o HTML da tela correspondente em `docs/design/telas/`. Reproduza layout, hierarquia e textos usando os componentes de `components/ui/` e os tokens semânticos; nunca copie os estilos inline nem cores em hex dessas telas. A lista de componentes exigidos pelas telas está no README do design e faz parte da Etapa 2.
+
+## Arquitetura por módulos
+
+Cada módulo tem pasta própria em todas as camadas:
+
+```
+app/
+  Actions/{Training,Habits}/  regras de negócio por módulo
+  Enums/Training/          UsageRule, MuscleGroup...
+  Models/{Training,Habits}/   dados de cada módulo
+  Models/User.php          núcleo
+resources/views/
+  components/ui/           design system (button, card, input, modal...)
+  livewire/core/           Hoje, navegação, configurações
+  livewire/{training,habits}/ telas e blocos de cada módulo
+routes/
+  web.php                  núcleo + include dos módulos
+  training.php             rotas com prefixo /treino
+  habits.php               rotas em /habitos
+tests/Feature/{Training,Habits}/ testes por módulo
+```
+
+**Integração entre módulos:** o Hoje compõe os blocos Livewire `habits.today` e `training.today`. Cada bloco chama as Actions públicas e renderiza o estado do próprio módulo.
+
+## Legado da transição
+
+| Item | Destino | Observação |
+|---|---|---|
+| Stack (Laravel, Livewire, Tailwind, Vite) | Mantém | Base do projeto |
+| Login Google (Socialite) | Mantém | Atualizar URL de callback no novo domínio |
+| PWA (sw.js, offline, instalação) | Mantém e adapta | Novo manifest, ícones e versão de cache |
+| CI, Husky, Pest, PHPStan, Pint, Sail | Mantém | Sem alterações |
+| Suplementação (lógica e tabelas) | Refatora | Vira parte do módulo Treino, com dados migrados |
+| Views, app.css, ícones e logo | Descarta | Substituídos pelo novo design system |
+| Abas placeholder (Treino, Dieta, Saúde, Perfil) | Descarta | Recriadas como módulos quando entrarem no roadmap |
+| Arquivo `testing_test_2` (SQLite) | Remove | Adicionar ao `.gitignore` |
+
+**Bugs conhecidos a corrigir na refatoração da suplementação:**
+- O toggle de consumo não verifica se o suplemento pertence ao usuário.
+- A restrição única de consumo não inclui o `user_id`.
+
+**Importante:** as tabelas antigas de suplementação (`suplementos`, `consumo_diario`) e seus models só podem ser removidos depois da migração de dados (etapa 5).
+
+## Escopo do MVP
+
+Pronto quando for possível usar o Keep Focus diariamente para acompanhar hábitos, treinar com fichas e controlar a suplementação a partir da tela Hoje.
+
+**Dentro do escopo:**
+- Nova identidade Keep Focus: nome, logo, paleta, tipografia, design system com modo claro e escuro.
+- Núcleo: login Google, tela Hoje, navegação entre módulos, configurações básicas (meta semanal de treinos).
+- Hábitos: cadastrar e arquivar hábitos diários, marcar e desmarcar no Hoje e preservar registros ao arquivar.
+- Treino: catálogo de exercícios (padrão + personalizados).
+- Treino: fichas em rodízio com exercícios, séries, faixa de repetições e descanso.
+- Treino: registro do treino do dia, pré-preenchido com o último treino, com timer de descanso.
+- Treino: histórico e evolução de carga por exercício.
+- Treino: suplementação refatorada, integrada à regra de dia de treino.
+- Meta semanal de treinos com sequência de semanas cumpridas.
+- Migração dos dados de suplementação existentes e deploy no novo domínio.
+
+**Fora do escopo (não implementar):** frequências personalizadas de hábitos, módulo Foco (Pomodoro), medidas corporais/peso/fotos, Dieta, Saúde, Metas, Tarefas, Diário, notificações push, sincronização offline de registros, compartilhamento social.
+
+## Modelo de dados
+
+Todas as tabelas têm `id` e timestamps. Exceto os exercícios padrão, todas têm `user_id` com cascade on delete.
+
+| Tabela | Campos principais | Regras |
+|---|---|---|
+| users | name, email, password, weekly_workout_goal (padrão 4), last_login_method (`google` ou `email`) | Núcleo; criado no login Google |
+| exercises | user_id (nulo = catálogo padrão), name, muscle_group, equipment | Usuário vê os padrão + os seus |
+| workout_plans | user_id, name, position, archived_at, notes | Ficha; arquivar em vez de apagar |
+| workout_plan_exercises | workout_plan_id, exercise_id, position, sets, reps_min, reps_max, rest_seconds, notes | Exercícios da ficha, em ordem |
+| workout_sessions | user_id, workout_plan_id, started_at, finished_at, notes | finished_at nulo = em andamento |
+| workout_sets | workout_session_id, exercise_id, set_number, weight_kg, reps, completed | Aponta para o exercício, não para o item da ficha |
+| supplements | user_id, name, dose, unit, dose_notes, scheduled_time, usage_rule, notes | usage_rule: `daily` ou `training_days` |
+| supplement_logs | user_id, supplement_id, date, taken | Único em (user_id, supplement_id, date) |
+| habits | user_id, name, archived_at | Hábito diário, arquivado quando sai da rotina |
+| habit_logs | user_id, habit_id, date | A presença do registro indica conclusão. Único por hábito e data |
+
+`workout_sets` aponta para `exercises` porque editar ou arquivar uma ficha não pode alterar o histórico, e a evolução de carga deve continuar mesmo se o exercício mudar de ficha.
+
+## Regras de negócio
+
+**Rodízio de fichas.** A próxima ficha é a seguinte, por `position`, à ficha do último treino finalizado, entre as fichas ativas. Depois da última, volta à primeira. Faltar um dia não avança o rodízio.
+- Sem nenhum treino finalizado: sugere a primeira ficha ativa.
+- Ficha do último treino arquivada: usa a `position` dela para achar a próxima ativa.
+- Treino iniciado e não finalizado: a tela Hoje oferece retomar, nunca iniciar outro.
+- O usuário pode escolher outra ficha; o rodízio segue a partir da que foi realmente feita.
+
+**Dia de treino.** Não há agenda: um dia é de treino quando existe um `workout_session` iniciado naquela data.
+
+**Suplementação.** Suplementos `daily` aparecem todo dia. Suplementos `training_days` aparecem no Hoje marcados como "se treinar hoje" e ficam ativos quando um treino do dia é iniciado. Marcar e desmarcar alterna o registro do dia, sempre validando o dono do suplemento.
+
+**Hábitos diários.** O Hoje mostra os hábitos ativos do usuário na ordem de cadastro. A conclusão pertence à data civil no fuso da aplicação. Marcar cria o registro do dia, desmarcar o remove. Repetir a mesma solicitação mantém o estado. Arquivar retira o hábito do Hoje e preserva os registros anteriores.
+
+**Pré-preenchimento e progressão.** Ao iniciar um treino, cada série vem com carga e repetições da mesma série do último treino com aquele exercício. Progressão dupla: se no último treino todas as séries atingiram `reps_max`, o app sugere aumentar a carga.
+
+**Meta semanal.** Semana de segunda a domingo. A meta é cumprida quando o número de treinos finalizados na semana atinge `weekly_workout_goal`. A sequência conta semanas consecutivas cumpridas; a semana atual só quebra a sequência depois de terminar.
+
+## Telas
+
+| Tela | Rota | Conteúdo |
+|---|---|---|
+| Entrada | `/` | Apresentação e botão Entrar com Google |
+| Hoje | `/hoje` | Hábitos do dia, treino sugerido (ou retomar), meta de treinos e suplementos |
+| Hábitos | `/habitos` | Cadastro e arquivamento de hábitos diários |
+| Fichas | `/treino/fichas` | Fichas ativas em ordem, reordenar, arquivar |
+| Editar ficha | `/treino/fichas/{id}` | Exercícios com séries, faixa de repetições e descanso |
+| Treino em andamento | `/treino/sessao/{id}` | Exercícios em ordem, séries pré-preenchidas, timer de descanso, finalizar |
+| Resumo do treino | `/treino/sessao/{id}/resumo` | Duração, volume total, recordes batidos |
+| Histórico | `/treino/historico` | Treinos passados e evolução de carga por exercício |
+| Exercícios | `/treino/exercicios` | Catálogo padrão e personalizados |
+| Suplementos | `/treino/suplementos` | CRUD de suplementos |
+| Configurações | `/configuracoes` | Meta semanal, conta, sair |
+
+**Fluxo principal:** abrir no Hoje ("Treino de hoje: Ficha B") → iniciar (ou trocar de ficha antes) → para cada série, confirmar ou ajustar carga e repetições; o timer de descanso dispara ao concluir a série → finalizar e ver o resumo → voltar ao Hoje, com os suplementos de dia de treino ativos.
+
+## Plano de transição
+
+1. **Base limpa** — backup do SQLite da VPS (feito manualmente pelo dono); criar branch `KT-15`; remover views, app.css, ícones, abas placeholder e `testing_test_2`; atualizar APP_NAME, composer.json, manifest.json e locale pt_BR; app rodando com login Google e uma tela `/hoje` vazia.
+2. **Design system** — tokens no `@theme` do Tailwind com modo claro e escuro; fontes e ícones; todos os componentes listados em `docs/design/README.md` (básicos e específicos); página `/dev/ui` (só local) com todos os componentes.
+3. **Dados e regras do Treino** — migrations, models e Enums; catálogo padrão adiado (ver decisões); Actions: próxima ficha, iniciar e finalizar treino, registrar série, pré-preenchimento, progressão, meta semanal, toggle de suplemento; testes Pest de todas as regras de borda.
+4. **Telas do Treino e tela Hoje** — exercícios, fichas e edição; treino em andamento com timer e resumo; suplementos e histórico; tela Hoje e configurações.
+5. **Migração de dados** — migration que copia `suplementos` e `consumo_diario` para `supplements` e `supplement_logs`; validar com cópia do banco de produção.
+6. **Infraestrutura e lançamento** — domínio, DNS, Nginx, SSL; callback no Google Cloud Console; `.env` da VPS e versão de cache do `sw.js`; renomear repositório; merge na main, deploy, reinstalar o PWA.
+
+## Critérios de aceite
+
+- Login com Google funciona e redireciona para a tela Hoje.
+- Uma conta sem fichas pode criar um hábito e marcar ou desmarcar a conclusão no Hoje. A marcação persiste após recarregar. Arquivar preserva os registros e remove o hábito do Hoje.
+- A tela Hoje sugere a ficha correta do rodízio, inclusive após faltas e trocas manuais.
+- Um treino pode ser iniciado, retomado depois de fechar o app e finalizado.
+- As séries vêm pré-preenchidas com o último treino de cada exercício.
+- O timer de descanso dispara ao concluir uma série.
+- O histórico mostra a evolução de carga por exercício.
+- Suplementos de dia de treino só ficam ativos após iniciar um treino no dia.
+- A meta semanal e a sequência de semanas são calculadas corretamente.
+- Os suplementos e registros antigos aparecem no Keep Focus.
+- Nenhuma Action aceita dados de outro usuário (coberto por testes).
+- CI verde: Pint, PHPStan e Pest.
+- PWA instalável com nome e ícones do Keep Focus, funcionando em modo claro e escuro.
+
+## Decisões em aberto
+
+- Manter SQLite em produção ou migrar para MySQL/PostgreSQL antes do lançamento.
+- API externa para o catálogo padrão de exercícios.
+
+## Decisões tomadas
+
+(Registrar aqui, com data, cada decisão nova.)
+
+- **2026-11-27** — O repositório no GitHub chama-se `keep-focus-app`. Na VPS, `VPS_PROJECT_PATH` aponta para o checkout existente. O padrão para novas instalações é `/opt/projects/keep-focus`.
+- **2026-11-27** — A primeira entrega do hub adiciona Hábitos diários à rotina. O Hoje mostra Hábitos antes do bloco Treino. A navegação fica em Hoje, Hábitos, Treino e Ajustes.
+- **2026-11-27** — Cada hábito tem um registro de conclusão por data civil. A escrita recebe o estado desejado para que uma repetição da mesma solicitação mantenha o resultado.
+- **2026-10-22** — A branch `keep-focus` virou `KT-15`: o hook `commit-msg` rejeita branches fora do padrão `KT-<n>`.
+- **2026-10-22** — O login por e-mail e senha (componente `core.login`) é mantido, ao lado do login Google.
+- **2026-10-22** — As migrations `diet_plans` e `diet_plan_items` são mantidas no repositório, sem models nem telas. Dieta continua fora do escopo do MVP.
+- **2026-10-22** — O componente legado `components/tabs/⚡suplementacao.blade.php` foi removido na etapa 4, substituído pelas telas do Treino. Os models e tabelas antigos (`Suplemento`, `ConsumoDiario`) continuam até a etapa 5.
+- **2026-10-22** — Os ícones do PWA foram provisórios na etapa 1; agora são o monograma "KF" em `public/icons/`, conforme a identidade visual.
+- **2026-10-22** — Todo commit traz no corpo um resumo enxuto de tudo o que foi feito (ver "Convenções").
+- **2026-10-22** — Catálogo de exercícios: por enquanto não há catálogo padrão; o usuário cadastra os próprios exercícios. `exercises.user_id` continua aceitando nulo para receber depois um catálogo vindo de uma API externa.
+- **2026-10-22** — Unidade de carga fixa em kg (`weight_kg`); a linha "Unidade de carga" em Ajustes é só informativa.
+- **2026-10-22** — Domínio do Keep Focus: `keep-focus.luvcode.tech`. Roteiro de lançamento em `docs/deploy.md`.
+- **2026-10-22** — Mensagens de validação em português em `lang/pt_BR/validation.php`, com nomes amigáveis para os campos dos formulários (`attributes`); regras não traduzidas caem no inglês do framework.
+- **2026-10-22** — Timezone da aplicação `America/Sao_Paulo` (`APP_TIMEZONE`): define a data do dia de treino, dos registros de suplemento e a semana de segunda a domingo.
+
+### 2026-10-22 — Identidade visual
+- Sensação: energética e esportiva.
+- Cor da marca: laranja, brand-500 `#FF6A00`; texto sobre laranja `#1A0F08` (nunca branco, por contraste).
+- Escala brand: 50 `#FFF4EC`, 100 `#FFE4CF`, 200 `#FFC79E`, 300 `#FFA463`, 400 `#FF8533`, 500 `#FF6A00`, 600 `#E85A00`, 700 `#C04A00`, 800 `#963C06`, 900 `#74300A`.
+- Laranja usado como cor de texto: `#C04A00` no modo claro, `#FFA463` no escuro (token `brand-text`).
+- Neutros quentes. Claro: bg `#FAF8F6`, surface `#FFFFFF`, surface-2 `#F3EFEC`, line `#E5DFDA`, ink `#1A1412`, ink-muted `#6B625C`. Escuro: bg `#0F0D0C`, surface `#1A1716`, surface-2 `#241F1D`, line `#332C29`, ink `#F5F1EE`, ink-muted `#A8A09B`.
+- Modo claro/escuro segue o sistema (`prefers-color-scheme`); sem toggle no MVP.
+- Tipografia: Barlow Condensed 500 (títulos, nomes de fichas, números grandes como timer e cargas) e Barlow 400/500 (texto). Números de carga, repetições e timer com `tabular-nums`. Fontes instaladas via `@fontsource/barlow` e `@fontsource/barlow-condensed` (funcionam offline no PWA); não usar Google Fonts CDN.
+- Logo: wordmark "KEEP FOCUS" em Barlow Condensed itálico, "FOCUS" na cor `brand-text`; implementar como componente Blade `<x-ui.logo />` com texto (não imagem).
+- Ícone do PWA: monograma "KF" itálico escuro sobre fundo laranja. Arquivos em `public/icons/` (icon.svg, icon-192.png, icon-512.png, icon-maskable-512.png, apple-touch-icon.png, favicon-32.png).
+- Tokens no `resources/css/app.css`: escala `brand-*` e `on-brand` no `@theme`; tokens semânticos (`bg`, `surface`, `surface-2`, `line`, `ink`, `ink-muted`, `brand-text`) no `@theme inline` apontando para variáveis `--kf-*` em `:root`, redefinidas em `@media (prefers-color-scheme: dark)`. Views usam só os semânticos (ex.: `bg-surface`, `text-ink`, `border-line`, `bg-brand-500 text-on-brand`), nunca hex direto.
+- `data-theme="light|dark"` pode forçar um modo num trecho da página (usado na `/dev/ui` para mostrar os dois modos lado a lado). Evitar a variante `dark:` do Tailwind: os tokens semânticos já trocam sozinhos.
+- Fontes: só o subset `latin` do @fontsource (cobre português).
+- Modal: `<dialog>` aberto e fechado pelos eventos `open-modal` / `close-modal` com o nome do modal.
+
+### 2026-10-22 — Telas e regras de interface
+- Telas do MVP aprovadas e salvas em `docs/design/telas/`, com guia em `docs/design/README.md`.
+- Navegação inferior: Hoje, Treino, Ajustes (rótulo de Configurações); oculta durante o treino em andamento. Seção Treino com abas em pílula: Fichas, Histórico, Exercícios, Suplementos.
+- Pré-preenchimento: séries vêm com a carga e as repetições do último treino; a progressão dupla só exibe um aviso de sugestão, sem alterar a carga automaticamente.
+- Timer de descanso em barra fixa no rodapé do treino, com −15 s, +15 s e Pular; inicia ao concluir uma série, com o `rest_seconds` do exercício.
+- Áreas tocáveis com no mínimo 44 px; botões principais com 52 px.
+
+### 2026-10-22 — Implementação do design system (etapa 2, aprovada pelo dono)
+- Tokens semânticos extras, além dos da identidade: `brand-soft` / `brand-soft-ink` (fundo e texto das etiquetas, do aviso de progressão e do banner de recordes: `#FFE4CF`/`#963C06` no claro, `#3A2312`/`#FFC79E` no escuro) e `danger`.
+- Barlow Condensed usada em 600 nos títulos e números, como nas telas (a identidade cita 500; o peso 500 também está instalado), e 700 itálico no logo. Barlow em 400, 500 e 600.
+- O "FOCUS" do logo usa `brand-text`, como diz a identidade (as telas mostram `#FF6A00`/`#E85A00`).
+- Componentes auxiliares além da lista do README: `icon` (ícones SVG por nome), `checkbox-box` (caixa compartilhada por `checkbox` e `supplement-item`), `set-table` (cabeçalho Série/Anterior/kg/Reps) e `monogram` (quadrado "KF" da entrada).
+- Interação no cliente com Alpine (já vem com o Livewire): `stepper` liga com `wire:model` via `x-modelable`; `rest-timer` começa com o evento `rest-timer-start` e conta pelo horário de término, para não atrasar com a tela apagada.
+- A tela de entrada mostra "Entrar com Google" como ação principal; o login por e-mail abre em "Entrar com e-mail".
+
+### 2026-10-22 — Regras do Treino implementadas (etapa 3)
+- Actions em `app/Actions/Training/`, todas recebendo o `User` e buscando os registros pelas relações dele (id de outro usuário dá 404): `GetNextWorkoutPlan`, `GetActiveWorkoutSession`, `StartWorkoutSession`, `RecordWorkoutSet`, `FinishWorkoutSession`, `GetPreviousSets`, `GetProgressionSuggestion`, `IsTrainingDay`, `GetWeeklyGoalProgress`, `GetTodaySupplements` e `ToggleSupplementLog`. As que o Hoje usa são `GetNextWorkoutPlan`, `GetActiveWorkoutSession`, `GetWeeklyGoalProgress` e `GetTodaySupplements`.
+- Regra de negócio violada lança `App\Exceptions\Training\TrainingRuleException`, com mensagem em pt_BR para mostrar ao usuário (treino já em andamento, treino já finalizado, ficha arquivada, suplemento de dia de treino antes de iniciar o treino).
+- Objetos de retorno em `app/Data/Training/` (`WeeklyGoalProgress`, `TodaySupplement`, `ProgressionSuggestion`).
+- Rodízio: empate de `position` desempata pelo `id`.
+- Pré-preenchimento: usa só séries concluídas do último treino finalizado com o exercício (em qualquer ficha); séries a mais na ficha repetem a última feita; sem histórico, a série vem vazia.
+- Progressão dupla: sugere +2,5 kg sobre a maior carga do último treino quando todas as séries planejadas foram feitas e todas atingiram `reps_max`.
+- Meta semanal: conta treinos finalizados pela data de início; semanas passadas são avaliadas com a meta atual do usuário (não há histórico de metas).
+- `supplement_logs.date` é gravado como timestamp à meia-noite (cast `date`); consultas por dia usam `whereDate`.
+- Exclusões: apagar um exercício usado em ficha ou histórico é bloqueado (`restrictOnDelete`); apagar uma ficha deixa os treinos com `workout_plan_id` nulo.
+
+### 2026-10-22 — Telas do Treino e Hoje (etapa 4)
+- Rotas do módulo em `routes/training.php` (prefixo `/treino`, nomes `training.*`); núcleo em `routes/web.php`: `/hoje` (`today`), `/configuracoes` (`settings`) e `POST /sair` (`logout`).
+- Telas em `livewire/core/` (`today`, `settings`, `login`) e `livewire/training/` (`plans`, `plan-editor`, `workout`, `summary`, `history`, `exercises`, `supplements`). Leitura e escrita passam por Actions; as telas só orquestram estado.
+- As fichas ativas recebem letras pela ordem do rodízio (Ficha A, B, C...); arquivadas usam a inicial do nome. "Ficha B" no Hoje, no treino e no histórico vem dessa letra, e o nome da ficha aparece como descrição.
+- Treino em andamento: cada mudança de carga ou repetição é salva na hora, para retomar depois de fechar o app; concluir uma série dispara o `rest-timer` com o `rest_seconds` do exercício. Exercícios concluídos e futuros ficam recolhidos; o atual (primeiro com série pendente) fica aberto.
+- Recorde: a melhor série concluída do exercício no treino (mais carga, depois mais repetições) que supera todos os treinos finalizados anteriores; a primeira vez que um exercício é feito não conta como recorde. Volume = soma de carga × repetições das séries concluídas.
+- Histórico: gráfico com a maior carga de cada um dos últimos 8 treinos do exercício escolhido.
+- Componentes de estrutura adicionados ao design system: `page`, `page-header`, `action-bar`, `alert`, `section-label`; variantes de botão `outline` (Finalizar) e `inverse` (Retomar treino); componente do módulo `training/header` (título e abas da seção Treino).
+- Ajustes mostra por onde a pessoa entrou ("Conectado com Google" ou "Conectado com e-mail"): o método fica na sessão do acesso atual e em `users.last_login_method`, usado quando o "manter conectado" restaura o login numa sessão nova (Actions `Core/RecordLogin` e `Core/GetLoginMethod`).
+
+### 2026-10-22 — Migração dos suplementos antigos (etapa 5)
+- A migration `2026_10_22_000007_copy_legacy_supplements` copia `suplementos` para `supplements` e `consumo_diario` para `supplement_logs`: `nome`→`name`, `quantidade_dose`→`dose`, `unidade_medida`→`unit`, `informacao_adicional_dose`→`dose_notes`, `horario_indicado`→`scheduled_time`, `observacao`→`notes`, `regra_uso` `diario`/`apenas_treino`→`daily`/`training_days` (valor desconhecido vira `daily`), `data_consumo`→`date` (meia-noite, no formato do cast), `consumido`→`taken`; datas de criação preservadas.
+- Registros de consumo feitos por outro usuário no suplemento de alguém (possíveis pelo bug antigo do toggle) não são copiados.
+- A migration não tem volta (`down` vazio): para desfazer, restaurar o backup feito antes de migrar. Ela grava no log um resumo (`Legacy supplements copied`) com o total copiado e o que foi ignorado.
+- As tabelas e models antigos (`suplementos`, `consumo_diario`, `Suplemento`, `ConsumoDiario`) continuam no lançamento e saem numa migration própria numa versão seguinte, depois de conferir em produção que os suplementos aparecem para todos.
+- Validação com a cópia de produção: copiar o arquivo para `/tmp` dentro do container, rodar `php artisan migrate` com `DB_DATABASE` apontando para a cópia e comparar as contagens das tabelas antigas e novas com o resumo do log.
+
+### 2026-10-22 — PWA e deploy (etapa 6)
+- O service worker (`public/sw.js`) é registrado em `resources/js/app.js`. Ele guarda só arquivos estáticos (`/build/`, `/icons/`) e a página offline; páginas nunca vão para o cache, porque são pessoais. Sem conexão, mostra `public/offline.html`. Cada release que mudar ícones, manifest ou a página offline aumenta `CACHE_VERSION`.
+- `public/offline.html` repete os tokens da identidade em CSS próprio, porque o service worker serve o arquivo sem o build do Vite.
+- Removidos `public/pwa-install.js` e `public/background-sync.js` do pacote `ladumor/laravel-pwa`: nunca foram carregados, e sincronização offline está fora do escopo.
+- O deploy da `main` faz backup de `database/database.sqlite` em `database/backups/` antes de cada `migrate` e mantém os 10 mais recentes.

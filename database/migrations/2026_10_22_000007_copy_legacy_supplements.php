@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * Copies the Keep Training supplements (suplementos, consumo_diario) into
+ * Copies the legacy supplements (suplementos, consumo_diario) into
  * supplements and supplement_logs. The legacy tables stay untouched; they are
  * dropped in a later migration, once this copy is validated with production data.
  */

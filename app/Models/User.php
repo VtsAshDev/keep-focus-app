@@ -4,6 +4,8 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Enums\Core\LoginMethod;
+use App\Models\Habits\Habit;
+use App\Models\Habits\HabitLog;
 use App\Models\Training\Exercise;
 use App\Models\Training\Supplement;
 use App\Models\Training\SupplementLog;
@@ -102,5 +104,17 @@ class User extends Authenticatable
     public function supplementLogs(): HasMany
     {
         return $this->hasMany(SupplementLog::class);
+    }
+
+    /** @return HasMany<Habit, $this> */
+    public function habits(): HasMany
+    {
+        return $this->hasMany(Habit::class);
+    }
+
+    /** @return HasMany<HabitLog, $this> */
+    public function habitLogs(): HasMany
+    {
+        return $this->hasMany(HabitLog::class);
     }
 }

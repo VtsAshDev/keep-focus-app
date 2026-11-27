@@ -22,12 +22,14 @@ Os dados nas telas (nomes de fichas, cargas, datas) são exemplos. Placeholders 
 | `historico.html` | `/treino/historico` | Seletor de exercício, carga atual, recorde e variação; gráfico de linha da carga; treinos recentes. |
 | `suplementos.html` | `/treino/suplementos` | Suplementos agrupados por regra (Todo dia, Dias de treino) com editar; "Novo suplemento". |
 | `configuracoes.html` | `/configuracoes` | Stepper da meta semanal; conta Google; aparência (segue o sistema); sair. A linha "Unidade de carga" depende de decisão em aberto. |
+| `suplementos.html` (padrão de lista e formulário) | `/habitos` | Hábitos ativos em lista com ação Arquivar, botão Novo hábito e modal de cadastro. |
 
 A tela `/treino/exercicios` não foi desenhada: segue o padrão de `suplementos.html` (lista agrupada por grupo muscular, com busca e "Novo exercício").
 
 ## Regras de interface definidas nas telas
 
-- Navegação inferior com três itens: **Hoje**, **Treino**, **Ajustes** (rótulo curto para Configurações). Some durante o treino em andamento.
+- Navegação inferior com quatro itens: **Hoje**, **Hábitos**, **Treino**, **Ajustes** (rótulo curto para Configurações). Some durante o treino em andamento.
+- No Hoje, a saudação é geral. O card de hábitos vem antes do bloco Treino e apresenta os hábitos diários em uma lista de checkboxes. No primeiro acesso, o card leva ao cadastro.
 - Dentro de Treino, abas em pílula no topo: Fichas, Histórico, Exercícios, Suplementos.
 - **Pré-preenchimento:** cada série vem com carga e repetições da mesma série do último treino com aquele exercício. Quando a regra de progressão dupla se aplica, aparece o aviso de sugestão no topo do exercício, mas a carga **não** é alterada automaticamente.
 - Concluir uma série dispara o timer de descanso com o `rest_seconds` do exercício na ficha.

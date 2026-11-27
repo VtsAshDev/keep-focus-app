@@ -4,11 +4,12 @@
 #
 # Usage: scripts/validate-production-db.sh [user@host]
 #   With a host, downloads the database first into database/producao.sqlite.
+#   Set VPS_PROJECT_PATH when the remote checkout uses a different directory.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-REMOTE_PATH=/opt/projects/Keep-Training-app/database/database.sqlite
+REMOTE_PATH="${VPS_PROJECT_PATH:-/opt/projects/keep-focus}/database/database.sqlite"
 LOCAL_COPY=database/producao.sqlite
 
 if [ $# -ge 1 ]; then

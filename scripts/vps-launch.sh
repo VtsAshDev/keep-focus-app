@@ -7,10 +7,11 @@
 #   bash vps-launch.sh check    after the deploy: migrations, legacy copy summary and HTTPS
 #
 # Every step can be run again safely. DNS and the Google Cloud Console are done by hand (docs/deploy.md).
+# Set VPS_PROJECT_PATH to use a different checkout on the VPS.
 set -euo pipefail
 
 DOMAIN=keep-focus.luvcode.tech
-APP_DIR=/opt/projects/Keep-Training-app
+APP_DIR="${VPS_PROJECT_PATH:-/opt/projects/keep-focus}"
 APP_PORT=8082
 BACKUP_DIR=/root/keep-focus-backups
 NGINX_SITE=/etc/nginx/sites-available/keep-focus
@@ -20,7 +21,7 @@ ok() { echo -e "\033[0;32m✔ $*\033[0m"; }
 fail() { echo -e "\033[1;31m✖ $*\033[0m" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || fail "Rode como root."
-cd "$APP_DIR" || fail "Pasta $APP_DIR não encontrada."
+cd -P -- "$APP_DIR" || fail "Pasta $APP_DIR não encontrada. Confira VPS_PROJECT_PATH."
 
 backup() {
     step "Backup do banco e do .env"
@@ -115,7 +116,7 @@ env_file() {
 
     echo
     echo "A produção usa a configuração em cache: o app só passa a usar este .env quando o deploy"
-    echo "refizer o cache. Faça o merge da KT-20 na main agora."
+    echo "refizer o cache. Na janela de lançamento, execute o pipeline da main."
 }
 
 check() {

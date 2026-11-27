@@ -1,20 +1,21 @@
 # Keep Focus
 
-Hub pessoal para acompanhar vida e hábitos, construído sobre a base técnica do Keep Training. O entregável atual é o **MVP de transição**: nova identidade Keep Focus, núcleo do hub e o módulo **Treino** completo.
+Hub pessoal para acompanhar a rotina diária. A primeira entrega do hub reúne **Hábitos diários** e **Treino** na tela **Hoje**.
 
 Este arquivo é a referência do projeto para escopo, convenções, modelo de dados e regras de negócio. Siga-o sempre. Decisões novas devem ser registradas aqui (seção "Decisões tomadas").
 
-**Princípio central:** o Keep Focus é um núcleo (usuário, tela Hoje, hábitos, design system) cercado por módulos independentes. Treino é o primeiro módulo e define o padrão que os próximos copiam.
+**Princípio central:** o Keep Focus tem um núcleo (usuário, tela Hoje, navegação e design system) que reúne módulos independentes. Treino e Hábitos seguem a mesma arquitetura modular.
 
 ## Status atual
 
-- Branches seguem o padrão do hook `commit-msg` (`KT-<n>`, ex.: `KT-15`); commits no formato `KT-<n>: [TIPO]:Descrição`. A `main` e a VPS continuam rodando o Keep Training até a etapa 6.
+- Branches seguem o padrão do hook `commit-msg` (`KT-<n>`, ex.: `KT-15`); commits no formato `KT-<n>: [TIPO]:Descrição`.
 - Etapa 1 (Base limpa): **concluída** na branch `KT-15`.
 - Etapa 2 (Design system): **concluída** na branch `KT-16`, revisada pelo dono em `/dev/ui`.
 - Etapa 3 (Dados e regras do Treino): **concluída** na branch `KT-17`.
 - Etapa 4 (Telas do Treino e tela Hoje): **concluída** na branch `KT-18`.
 - Etapa 5 (Migração de dados): **concluída** na branch `KT-19`, validada em 2026-10-22 com a cópia do banco de produção (8 suplementos e 12 registros copiados, nenhum ignorado).
-- Etapa em andamento: **6. Infraestrutura e lançamento** na branch `KT-20`: código pronto (service worker, página offline, backup no deploy, scripts de lançamento). Os passos na VPS, DNS e Google Cloud Console ficaram para depois; até lá a produção continua no Keep Training. Roteiro em `docs/deploy.md`.
+- Etapa 6 (Infraestrutura e lançamento): `KT-20` integrada à `main` em `a3a00df`, com CI e job de deploy concluídos. O dono habilitou `keep-focus.luvcode.tech`. O aceite do domínio, Google OAuth e PWA é acompanhado à parte em `docs/deploy.md`.
+- Primeira entrega do hub: **Hábitos diários** na branch `KT-21`, com o Hoje compondo os dois módulos.
 
 ## Stack
 
@@ -40,6 +41,10 @@ Antes de concluir qualquer tarefa, rode Pint, PHPStan e Pest e garanta que tudo 
 - Todo commit explica, no corpo da mensagem e de forma enxuta, tudo o que foi feito: uma linha por mudança relevante, em português, fácil de entender sem abrir o diff.
 - Em componentes Livewire de arquivo único, a view chama classes pelo nome completo (ex.: `App\Support\Dates::long(...)`), sem `use`. A parte PHP e a view viram um só arquivo compilado, e o Pint (que o lint-staged roda nos `.blade.php`) só enxerga a classe: remove imports que só a view usa e cria imports que colidem com um `@php use` da view.
 
+## Orquestração de desenvolvimento
+
+Em entregas que atravessam módulos, o coordenador define os critérios de aceite e delimita os arquivos por frente. Núcleo/UI e domínio trabalham em paralelo quando os recortes são independentes. A revisão de QA usa o diff integrado e o coordenador roda `composer ci:check` uma vez por revisão pronta, usando testes direcionados durante a implementação. Passe aos agentes o contrato, os arquivos e os critérios relevantes para a tarefa.
+
 ## Design de referência
 
 As telas aprovadas ficam em `docs/design/`. Antes de criar ou alterar qualquer componente ou tela, leia `docs/design/README.md` e o HTML da tela correspondente em `docs/design/telas/`. Reproduza layout, hierarquia e textos usando os componentes de `components/ui/` e os tokens semânticos; nunca copie os estilos inline nem cores em hex dessas telas. A lista de componentes exigidos pelas telas está no README do design e faz parte da Etapa 2.
@@ -50,23 +55,24 @@ Cada módulo tem pasta própria em todas as camadas:
 
 ```
 app/
-  Actions/Training/        regras de negócio do Treino
+  Actions/{Training,Habits}/  regras de negócio por módulo
   Enums/Training/          UsageRule, MuscleGroup...
-  Models/Training/         Exercise, WorkoutPlan, WorkoutSession...
+  Models/{Training,Habits}/   dados de cada módulo
   Models/User.php          núcleo
 resources/views/
   components/ui/           design system (button, card, input, modal...)
   livewire/core/           Hoje, navegação, configurações
-  livewire/training/       telas do módulo Treino
+  livewire/{training,habits}/ telas e blocos de cada módulo
 routes/
   web.php                  núcleo + include dos módulos
   training.php             rotas com prefixo /treino
-tests/Feature/Training/    testes do módulo
+  habits.php               rotas em /habitos
+tests/Feature/{Training,Habits}/ testes por módulo
 ```
 
-**Integração entre módulos:** a tela Hoje não conhece detalhes internos dos módulos. Cada módulo expõe o que aparece no dia (treino sugerido, suplementos pendentes) por uma Action pública, e o Hoje apenas renderiza esses blocos.
+**Integração entre módulos:** o Hoje compõe os blocos Livewire `habits.today` e `training.today`. Cada bloco chama as Actions públicas e renderiza o estado do próprio módulo.
 
-## Origem: o que vem do Keep Training
+## Legado da transição
 
 | Item | Destino | Observação |
 |---|---|---|
@@ -87,11 +93,12 @@ tests/Feature/Training/    testes do módulo
 
 ## Escopo do MVP
 
-Pronto quando for possível usar o Keep Focus todos os dias para treinar com fichas e controlar a suplementação a partir da tela Hoje.
+Pronto quando for possível usar o Keep Focus diariamente para acompanhar hábitos, treinar com fichas e controlar a suplementação a partir da tela Hoje.
 
 **Dentro do escopo:**
 - Nova identidade Keep Focus: nome, logo, paleta, tipografia, design system com modo claro e escuro.
 - Núcleo: login Google, tela Hoje, navegação entre módulos, configurações básicas (meta semanal de treinos).
+- Hábitos: cadastrar e arquivar hábitos diários, marcar e desmarcar no Hoje e preservar registros ao arquivar.
 - Treino: catálogo de exercícios (padrão + personalizados).
 - Treino: fichas em rodízio com exercícios, séries, faixa de repetições e descanso.
 - Treino: registro do treino do dia, pré-preenchido com o último treino, com timer de descanso.
@@ -100,7 +107,7 @@ Pronto quando for possível usar o Keep Focus todos os dias para treinar com fic
 - Meta semanal de treinos com sequência de semanas cumpridas.
 - Migração dos dados de suplementação existentes e deploy no novo domínio.
 
-**Fora do escopo (não implementar):** hábitos genéricos, módulo Foco (Pomodoro), medidas corporais/peso/fotos, Dieta, Saúde, Metas, Tarefas, Diário, notificações push, sincronização offline de registros, compartilhamento social.
+**Fora do escopo (não implementar):** frequências personalizadas de hábitos, módulo Foco (Pomodoro), medidas corporais/peso/fotos, Dieta, Saúde, Metas, Tarefas, Diário, notificações push, sincronização offline de registros, compartilhamento social.
 
 ## Modelo de dados
 
@@ -116,6 +123,8 @@ Todas as tabelas têm `id` e timestamps. Exceto os exercícios padrão, todas t�
 | workout_sets | workout_session_id, exercise_id, set_number, weight_kg, reps, completed | Aponta para o exercício, não para o item da ficha |
 | supplements | user_id, name, dose, unit, dose_notes, scheduled_time, usage_rule, notes | usage_rule: `daily` ou `training_days` |
 | supplement_logs | user_id, supplement_id, date, taken | Único em (user_id, supplement_id, date) |
+| habits | user_id, name, archived_at | Hábito diário, arquivado quando sai da rotina |
+| habit_logs | user_id, habit_id, date | A presença do registro indica conclusão. Único por hábito e data |
 
 `workout_sets` aponta para `exercises` porque editar ou arquivar uma ficha não pode alterar o histórico, e a evolução de carga deve continuar mesmo se o exercício mudar de ficha.
 
@@ -131,6 +140,8 @@ Todas as tabelas têm `id` e timestamps. Exceto os exercícios padrão, todas t�
 
 **Suplementação.** Suplementos `daily` aparecem todo dia. Suplementos `training_days` aparecem no Hoje marcados como "se treinar hoje" e ficam ativos quando um treino do dia é iniciado. Marcar e desmarcar alterna o registro do dia, sempre validando o dono do suplemento.
 
+**Hábitos diários.** O Hoje mostra os hábitos ativos do usuário na ordem de cadastro. A conclusão pertence à data civil no fuso da aplicação. Marcar cria o registro do dia, desmarcar o remove. Repetir a mesma solicitação mantém o estado. Arquivar retira o hábito do Hoje e preserva os registros anteriores.
+
 **Pré-preenchimento e progressão.** Ao iniciar um treino, cada série vem com carga e repetições da mesma série do último treino com aquele exercício. Progressão dupla: se no último treino todas as séries atingiram `reps_max`, o app sugere aumentar a carga.
 
 **Meta semanal.** Semana de segunda a domingo. A meta é cumprida quando o número de treinos finalizados na semana atinge `weekly_workout_goal`. A sequência conta semanas consecutivas cumpridas; a semana atual só quebra a sequência depois de terminar.
@@ -140,7 +151,8 @@ Todas as tabelas têm `id` e timestamps. Exceto os exercícios padrão, todas t�
 | Tela | Rota | Conteúdo |
 |---|---|---|
 | Entrada | `/` | Apresentação e botão Entrar com Google |
-| Hoje | `/hoje` | Treino sugerido (ou retomar), progresso da meta semanal, suplementos do dia |
+| Hoje | `/hoje` | Hábitos do dia, treino sugerido (ou retomar), meta de treinos e suplementos |
+| Hábitos | `/habitos` | Cadastro e arquivamento de hábitos diários |
 | Fichas | `/treino/fichas` | Fichas ativas em ordem, reordenar, arquivar |
 | Editar ficha | `/treino/fichas/{id}` | Exercícios com séries, faixa de repetições e descanso |
 | Treino em andamento | `/treino/sessao/{id}` | Exercícios em ordem, séries pré-preenchidas, timer de descanso, finalizar |
@@ -164,6 +176,7 @@ Todas as tabelas têm `id` e timestamps. Exceto os exercícios padrão, todas t�
 ## Critérios de aceite
 
 - Login com Google funciona e redireciona para a tela Hoje.
+- Uma conta sem fichas pode criar um hábito e marcar ou desmarcar a conclusão no Hoje. A marcação persiste após recarregar. Arquivar preserva os registros e remove o hábito do Hoje.
 - A tela Hoje sugere a ficha correta do rodízio, inclusive após faltas e trocas manuais.
 - Um treino pode ser iniciado, retomado depois de fechar o app e finalizado.
 - As séries vêm pré-preenchidas com o último treino de cada exercício.
@@ -185,6 +198,9 @@ Todas as tabelas têm `id` e timestamps. Exceto os exercícios padrão, todas t�
 
 (Registrar aqui, com data, cada decisão nova.)
 
+- **2026-11-27** — O repositório no GitHub chama-se `keep-focus-app`. Na VPS, `VPS_PROJECT_PATH` aponta para o checkout existente. O padrão para novas instalações é `/opt/projects/keep-focus`.
+- **2026-11-27** — A primeira entrega do hub adiciona Hábitos diários à rotina. O Hoje mostra Hábitos antes do bloco Treino. A navegação fica em Hoje, Hábitos, Treino e Ajustes.
+- **2026-11-27** — Cada hábito tem um registro de conclusão por data civil. A escrita recebe o estado desejado para que uma repetição da mesma solicitação mantenha o resultado.
 - **2026-10-22** — A branch `keep-focus` virou `KT-15`: o hook `commit-msg` rejeita branches fora do padrão `KT-<n>`.
 - **2026-10-22** — O login por e-mail e senha (componente `core.login`) é mantido, ao lado do login Google.
 - **2026-10-22** — As migrations `diet_plans` e `diet_plan_items` são mantidas no repositório, sem models nem telas. Dieta continua fora do escopo do MVP.
